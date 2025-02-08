@@ -9,6 +9,7 @@
     "frontend": "vite"
   },
   "dependencies": {
+    "@speechify/api-sdk": "^2.4.0",
     "dotenv": "^16.4.7",
     "framer-motion": "^12.4.1",
     "lucide-react": "^0.475.0",
