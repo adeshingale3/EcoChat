@@ -21,8 +21,7 @@ const app = express();
 
 // Extended CORS configuration
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174'],
-  methods: ['POST', 'GET', 'OPTIONS'],
+  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   credentials: true
 }));
 app.use(express.json());

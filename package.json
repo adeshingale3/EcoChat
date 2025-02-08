@@ -1,12 +1,14 @@
 {
-  "name": "hack-jmi-2025",
+  "name": "echochat",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"vite\" \"npm run start:server\"",
-    "start:server": "node server/server.js",
-    "frontend": "vite"
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview",
+    "start": "node server/server.js"
   },
   "dependencies": {
     "@speechify/api-sdk": "^2.4.0",

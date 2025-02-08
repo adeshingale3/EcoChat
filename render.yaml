@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: echochat
+    env: node
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 18.0.0
+      - key: PORT
+        value: 3000
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: CORS_ORIGIN
+        value: https://your-frontend-url.vercel.app

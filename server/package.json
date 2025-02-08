@@ -3,6 +3,13 @@
   "version": "1.0.0",
   "type": "module",
   "main": "server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "build": "npm install"
+  },
   "dependencies": {
     "@google/generative-ai": "^0.1.0",
     "cors": "^2.8.5",

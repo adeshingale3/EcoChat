@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Send, MessageSquare, Bot, Sparkles } from 'lucide-react';
 import useMeasure from 'react-use-measure';
 
-const API_URL = `http://localhost:3000/api/chat`;
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const fetchAccessToken = async () => {
   const response = await fetch(TOKEN_URL);
