@@ -2,10 +2,27 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
-import ChatInterface from './components/Charinterface';
+import ChatInterface from './components/Chatinterface';
 
 // import ChatInterface from './components/ChatInterface';
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <div>Something went wrong. Please refresh the page.</div>;
+    }
+    return this.props.children;
+  }
+}
 
 function App() {
   const [showChat, setShowChat] = useState(false);
@@ -36,7 +53,9 @@ function App() {
               transition={{ duration: 0.5, type: "spring", stiffness: 100 }}
               className="flex justify-center items-center min-h-[80vh]"
             >
-              <ChatInterface />
+              <ErrorBoundary>
+                <ChatInterface />
+              </ErrorBoundary>
             </motion.div>
           )}
         </AnimatePresence>

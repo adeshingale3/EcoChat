@@ -1,6 +1,8 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-
+/* Your custom styles below */
 .night-sky {
   background: linear-gradient(to bottom, #0f172a 0%, #1e293b 100%);
   background-attachment: fixed;
