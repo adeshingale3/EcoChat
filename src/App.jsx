@@ -3,8 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import ChatInterface from './components/Chatinterface';
-
-// import ChatInterface from './components/ChatInterface';
+import Footer from './components/Footer';  // Add this import
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -28,11 +27,11 @@ function App() {
   const [showChat, setShowChat] = useState(false);
 
   return (
-    <div className="min-h-screen night-sky text-white">
-      <div className="absolute inset-0 bg-gradient-to-b from-purple-900/20 to-pink-900/20" />
+    <div className="min-h-screen warm-gradient text-pink-100">
+      <div className="absolute inset-0 bg-gradient-to-b from-pink-900/10 to-pink-800/10" />
       <Navbar />
       
-      <div className="container mx-auto px-4 pt-24 pb-12 relative">
+      <div className="container mx-auto px-4 pt-24 pb-16 relative"> {/* Updated padding-bottom */}
         <AnimatePresence mode="wait">
           {!showChat ? (
             <motion.div
@@ -60,8 +59,9 @@ function App() {
           )}
         </AnimatePresence>
       </div>
+      <Footer />
     </div>
   );
 }
 
-export default App
+export default App;

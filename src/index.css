@@ -42,3 +42,15 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
 }
+
+.warm-gradient {
+  background: linear-gradient(to bottom, #28001e 0%, #1a0013 100%);
+  background-attachment: fixed;
+}
+
+.glass-pink {
+  background: rgba(255, 192, 203, 0.1);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 192, 203, 0.2);
+  box-shadow: 0 8px 32px 0 rgba(255, 0, 128, 0.1);
+}
