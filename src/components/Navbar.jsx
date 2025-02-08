@@ -53,7 +53,7 @@ const Navbar = ({ setShowChat }) => {
 
           <div className="flex items-center gap-4">
             <motion.a
-              href="https://github.com/yourusername/EchoChat"
+              href="https://github.com/rajdesai17/EcoChat"
               target="_blank"
               rel="noopener noreferrer"
               whileHover={{ scale: 1.1, rotate: 5 }}

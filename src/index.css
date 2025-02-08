@@ -164,3 +164,56 @@
   mix-blend-mode: overlay;
   pointer-events: none;
 }
+
+/* Update feature card styles */
+.feature-card-glow {
+  box-shadow: 
+    0 0 30px theme('colors.pink.500/0.1'),
+    inset 0 0 20px theme('colors.purple.500/0.05');
+  transform: perspective(1000px) rotateX(0deg);
+  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.feature-card-glow:hover {
+  box-shadow: 
+    0 20px 40px theme('colors.pink.500/0.2'),
+    inset 0 0 30px theme('colors.purple.500/0.1');
+  transform: perspective(1000px) rotateX(5deg);
+}
+
+/* Add shimmer effect */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    to bottom right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(45deg);
+  animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100%) rotate(45deg);
+  }
+}
+
+/* Add smooth transition for feature cards */
+.feature-card-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
