@@ -11,5 +11,3 @@ services:
         value: 3000
       - key: GOOGLE_API_KEY
         sync: false
-      - key: CORS_ORIGIN
-        value: https://your-frontend-url.vercel.app

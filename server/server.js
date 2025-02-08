@@ -4,7 +4,6 @@ import dotenv from 'dotenv';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { Speechify } from '@speechify/api-sdk';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -21,16 +20,11 @@ const app = express();
 
 // Extended CORS configuration
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: ['http://localhost:5173', 'http://localhost:5174'],
+  methods: ['POST', 'GET', 'OPTIONS'],
   credentials: true
 }));
 app.use(express.json());
-
-// Add request logging middleware
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`);
-  next();
-});
 
 // Validate API key
 if (!process.env.GOOGLE_API_KEY) {
@@ -90,20 +84,6 @@ function formatForSpeech(text) {
     // Add thoughtful pauses for ellipsis
     .replace(/\.\.\./g, '... <break time="0.5s"/> ');
 }
-
-const SPEECHIFY_API_KEY = process.env.VITE_SPEECHIFY_API_KEY;
-if (!SPEECHIFY_API_KEY) {
-  console.error('ERROR: VITE_SPEECHIFY_API_KEY is not set in .env file');
-  process.exit(1);
-}
-
-const speechifyApi = new Speechify({ 
-  apiKey: SPEECHIFY_API_KEY,
-  strict: false
-});
-
-// Remove or comment out this section
-// app.get('/api/token', async (req, res) => { ... });
 
 app.post('/api/chat', async (req, res) => {
   try {
@@ -176,8 +156,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`CORS enabled for: http://localhost:5173, http://localhost:5174`);
-  console.log(`Server is running on port ${PORT}`);
-  console.log('Available endpoints:');
-  console.log('- GET  /api/token');
-  console.log('- POST /api/chat');
 });
