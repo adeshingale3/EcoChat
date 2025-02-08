@@ -19,26 +19,29 @@ Echo serves as a **companion that listens, understands, and connects on an emoti
 
 ## **Quick Start**  
 
-\`\`\`bash
 # Clone the repository
+```
 git clone https://github.com/yourusername/Echo.git
-
+```
 # Install dependencies for both client and server
+```
 cd Echo
 npm install
 cd server
 npm install
 cd ..
-
+```
 # Set up environment variables
 # Create a .env file in both root and server directories with:
+```
 GOOGLE_API_KEY=your_gemini_api_key
 PORT=3000
 VITE_SPEECHIFY_API_KEY=your_speechify_api_key
-
+```
 # Start the development server
+```
 npm run dev
-\`\`\`
+```
 
 ## **Built With**  
 
