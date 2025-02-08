@@ -222,20 +222,21 @@ const ChatInterface = () => {
 
   // Define handleSend after both startListening and speakResponse
   const handleSend = useCallback(async (text = inputText) => {
-    const messageText = text.trim();
+    // Ensure text is a string and trim it
+    const messageText = String(text || '').trim();
     if (!messageText) return;
-
+  
     const userMessage = { text: messageText, isUser: true };
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
-
+  
     try {
-      setIsReplying(true); // Set replying state before speech
+      setIsReplying(true);
       if (recognition && isListening) {
-        recognition.stop(); // Stop listening while replying
+        recognition.stop();
         setIsListening(false);
       }
-
+  
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
@@ -247,16 +248,20 @@ const ChatInterface = () => {
           sessionId: sessionId
         }),
       });
-
+  
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
-      if (data.error) throw new Error(data.error);
-
+      
+      // Validate response data
+      if (!data || typeof data.reply !== 'string') {
+        throw new Error('Invalid response format');
+      }
+  
       setMessages(prev => [...prev, {
         text: data.reply,
         isUser: false
       }]);
-
+  
       if (isVoiceMode) {
         await speakResponse(data.reply);
       }
@@ -267,32 +272,40 @@ const ChatInterface = () => {
         isUser: false
       }]);
     } finally {
-      setIsReplying(false); // Reset replying state after speech
-      // Don't auto-start listening after response
-      // User needs to click to start listening again
+      setIsReplying(false);
     }
-  }, [inputText, sessionId, isVoiceMode, speakResponse, isListening, startListening]);
+  }, [inputText, sessionId, isVoiceMode, speakResponse, isListening, recognition]);
 
   // Define handleVoiceResult after handleSend
   const handleVoiceResult = useCallback((event) => {
-    if (isReplying) return; // Ignore results while bot is replying
+    if (isReplying) return;
 
-    const results = Array.from(event.results);
-    const current = results.map(result => result[0].transcript).join('');
-    setTranscript(current);
-    
-    // If this is a final result, submit after a short pause
-    if (results[results.length - 1].isFinal) {
-      setInputText(current);
-      // Stop listening and send message
-      if (recognition) {
-        recognition.stop();
-        setIsListening(false);
+    try {
+      const results = Array.from(event.results);
+      const current = results
+        .map(result => String(result[0]?.transcript || ''))
+        .filter(Boolean)
+        .join('');
+      
+      setTranscript(current);
+      
+      if (results[results.length - 1]?.isFinal) {
+        setInputText(current);
+        if (recognition) {
+          recognition.stop();
+          setIsListening(false);
+        }
+        // Only send if we have text
+        if (current.trim()) {
+          handleSend(current);
+          setTranscript('');
+        }
       }
-      handleSend(current);
-      setTranscript('');
+    } catch (error) {
+      console.error('Voice recognition error:', error);
+      setIsListening(false);
     }
-  }, [handleSend, isReplying]);
+  }, [handleSend, isReplying, recognition]);
 
   const stopListening = useCallback(async () => {
     if (!recognition) return;
