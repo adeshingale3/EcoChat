@@ -37,20 +37,130 @@
 }
 
 .glass-morphism {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  background: rgba(250, 248, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(250, 248, 255, 0.1);
+  box-shadow: 
+    0 8px 32px 0 rgba(31, 38, 135, 0.15),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 .warm-gradient {
-  background: linear-gradient(to bottom, #28001e 0%, #1a0013 100%);
+  background: linear-gradient(150deg, 
+    #0A0118 0%,
+    #1A0B2E 25%,
+    #261230 50%,
+    #2D1141 75%,
+    #3D1659 100%
+  );
   background-attachment: fixed;
 }
 
 .glass-pink {
-  background: rgba(255, 192, 203, 0.1);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 192, 203, 0.2);
-  box-shadow: 0 8px 32px 0 rgba(255, 0, 128, 0.1);
+  background: rgba(255, 62, 137, 0.05);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 62, 137, 0.1);
+  box-shadow: 
+    0 8px 32px 0 rgba(255, 62, 137, 0.15),
+    inset 0 0 0 1px rgba(255, 62, 137, 0.05);
+}
+
+/* Add after your existing styles */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.text-gradient {
+  background: linear-gradient(
+    to right,
+    theme('colors.pink.300'),
+    theme('colors.purple.300'),
+    theme('colors.pink.300')
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% auto;
+  animation: gradient 8s linear infinite;
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 20px theme('colors.pink.500/0.3');
+}
+
+.navbar-blur {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Add new gradient animations */
+.animate-gradient {
+  background: linear-gradient(
+    -45deg,
+    #FF3E89,
+    #9D4EDD,
+    #6C22BD,
+    #FF3E89
+  );
+  background-size: 400% 400%;
+  animation: gradient 15s ease infinite;
+}
+
+.text-gradient-primary {
+  background: linear-gradient(
+    to right,
+    #FF3E89,
+    #9D4EDD
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-secondary {
+  background: linear-gradient(
+    to right,
+    #9D4EDD,
+    #6C22BD
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Add glow effects */
+.glow {
+  box-shadow: 0 0 20px rgba(255, 62, 137, 0.3);
+}
+
+.glow-text {
+  text-shadow: 0 0 10px rgba(255, 62, 137, 0.3);
+}
+
+/* Add subtle noise texture */
+.noise {
+  position: relative;
+}
+
+.noise::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)' opacity='0.1'/%3E%3C/svg%3E");
+  opacity: 0.015;
+  mix-blend-mode: overlay;
+  pointer-events: none;
 }
