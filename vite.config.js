@@ -7,15 +7,13 @@ export default defineConfig({
     postcss: './postcss.config.js'
   },
   build: {
+    outDir: 'dist',
     rollupOptions: {
-      external: [],
-    },
-    outDir: 'dist'
+      external: []
+    }
   },
   define: {
-    'process.env': {
-      VITE_API_URL: JSON.stringify(process.env.VITE_API_URL),
-      VITE_SPEECHIFY_API_KEY: JSON.stringify(process.env.VITE_SPEECHIFY_API_KEY)
-    }
+    'process.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL),
+    'process.env.VITE_SPEECHIFY_API_KEY': JSON.stringify(process.env.VITE_SPEECHIFY_API_KEY)
   }
 })

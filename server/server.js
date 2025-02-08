@@ -20,7 +20,10 @@ const app = express();
 
 // Extended CORS configuration
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174'],
+  origin: [
+    'http://localhost:5173',
+    'https://echo-hack-jmi-2025.vercel.app',
+  ],
   methods: ['POST', 'GET', 'OPTIONS'],
   credentials: true
 }));

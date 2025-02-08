@@ -4,10 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"vite\" \"npm run start:server\"",
+    "dev": "vite",
     "build": "vite build",
-    "start:server": "node server/server.js",
-    "frontend": "vite",
     "preview": "vite preview"
   },
   "dependencies": {
