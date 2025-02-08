@@ -3,6 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Send, MessageSquare, Bot, Sparkles } from 'lucide-react';
 import useMeasure from 'react-use-measure';
 
+const API_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:3000/api/chat'
+  : 'https://your-deployed-backend-url/api/chat';
+
 const VoiceWaveform = () => {
   const bars = 5;
   return (
@@ -38,17 +42,42 @@ const ChatInterface = () => {
   const [isListening, setIsListening] = useState(false);
   const [ref, bounds] = useMeasure();
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (inputText.trim()) {
-      setMessages([...messages, { text: inputText, isUser: true }]);
+      // Add user message immediately
+      const userMessage = { text: inputText, isUser: true };
+      setMessages(prev => [...prev, userMessage]);
+      const currentInput = inputText;
       setInputText('');
-      // Simulate bot response
-      setTimeout(() => {
+
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ message: currentInput }),
+          mode: 'cors',
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
         setMessages(prev => [...prev, {
-          text: "I'm here to listen and support you. Would you like to tell me more about how you're feeling?",
+          text: data.reply || "I apologize, but I couldn't process that properly.",
           isUser: false
         }]);
-      }, 1000);
+      } catch (error) {
+        console.error('Error:', error);
+        setMessages(prev => [...prev, {
+          text: "I'm having trouble connecting. Please try again later.",
+          isUser: false
+        }]);
+      }
     }
   };
 
