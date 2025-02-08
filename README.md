@@ -6,6 +6,19 @@ A deeply empathetic AI chat companion designed to **understand, connect, and lis
 
 Echo serves as a **companion that listens, understands, and connects on an emotional level**. Whether users seek comfort, deep conversations, or just someone to talk to, Echo adapts and responds in a human-like way. It transforms **mental well-being support** by making AI interactions feel **authentic and raw**.  
 
+## Snapshots
+<table>
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/aff12240-c79d-4ba7-bca6-14fa0646453a" width="45%"></td>
+    <td><img src="https://github.com/user-attachments/assets/55e6dc43-6db5-418a-a576-a9849b227033" width="45%"></td>
+  </tr>
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/17fe2014-7a2b-4c04-bfd8-b7ec6b613dd1" width="45%"></td>
+    <td><img src="https://github.com/user-attachments/assets/6f55f0e1-2d30-4a47-a43c-8a8e6900cdc9" width="45%"></td>
+  </tr>
+</table>
+
+
 ## **Features**  
 
 - **Natural Conversations** with memory retention  
