@@ -4,17 +4,23 @@ import { Mic, Send, MessageSquare, Bot, Sparkles } from 'lucide-react';
 import useMeasure from 'react-use-measure';
 
 const API_URL = `http://localhost:3000/api/chat`;
-const SPEECHIFY_API_KEY = import.meta.env.VITE_SPEECHIFY_API_KEY;
-const SPEECHIFY_API_URL = import.meta.env.VITE_SPEECHIFY_API_URL;
+
+const fetchAccessToken = async () => {
+  const response = await fetch(TOKEN_URL);
+  const data = await response.json();
+  return data.accessToken;
+};
 
 const speechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = speechRecognition ? new speechRecognition() : null;
 const synthesis = window.speechSynthesis;
 
 if (recognition) {
-  recognition.continuous = true;
+  recognition.continuous = false; // Change to false to stop after final result
   recognition.interimResults = true;
   recognition.lang = 'en-US';
+  // Add shorter silence threshold
+  recognition.maxAlternatives = 1;
 }
 
 const VoiceWaveform = () => {
@@ -47,15 +53,10 @@ const VoiceWaveform = () => {
 
 const checkVoiceSupport = () => {
   const speechRecognitionSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
-  const speechifyConfigured = !!SPEECHIFY_API_KEY;
+  const speechSynthesisSupported = !!window.speechSynthesis;
   
-  if (!speechRecognitionSupported) {
-    console.warn('Speech recognition not supported');
-    return false;
-  }
-  
-  if (!speechifyConfigured) {
-    console.warn('Speechify API key not configured');
+  if (!speechRecognitionSupported || !speechSynthesisSupported) {
+    console.warn('Speech features not fully supported');
     return false;
   }
   
@@ -63,78 +64,163 @@ const checkVoiceSupport = () => {
 };
 
 const ChatInterface = () => {
+  // State definitions
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
-  const [isVoiceMode, setIsVoiceMode] = useState(() => checkVoiceSupport());
+  const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [ref, bounds] = useMeasure();
   const [sessionId] = useState(() => 'session_' + Date.now());
   const [transcript, setTranscript] = useState('');
+  const [isReplying, setIsReplying] = useState(false);
+  const [voiceGender, setVoiceGender] = useState('female');
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
 
-  // Define speakResponse first since other functions depend on it
-  const speakResponse = useCallback(async (text) => {
-    if (!isVoiceMode || !text?.trim()) return;
-  
+  // Define startListening first since other functions depend on it
+  const startListening = useCallback(() => {
+    if (!recognition) {
+      alert('Speech recognition is not supported in your browser');
+      return;
+    }
+    
     try {
-      const response = await fetch('https://texttospeech.speechify.com/api/generateAudioFiles', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${SPEECHIFY_API_KEY}`
-        },
-        body: JSON.stringify({
-          text: text,
-          audioFormat: 'mp3',
-          voiceParams: {
-            name: 'kristy', // Specify Kristy voice
-            engine: 'neural',
-            speakingRate: '1.0',
-            pitch: '1.0'
-          },
-          quality: 'high',
-          platform: 'web',
-          preserveParagraphs: true,
-          paragraphBreaks: true
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Speechify error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const audioUrl = data.audioUrl;
-      const audio = new Audio(audioUrl);
-
-      // Add natural fade in/out
-      audio.addEventListener('timeupdate', () => {
-        const fadePoint = 0.1;
-        if (audio.currentTime < fadePoint) {
-          audio.volume = audio.currentTime / fadePoint;
-        }
-        if (audio.duration - audio.currentTime < fadePoint) {
-          audio.volume = (audio.duration - audio.currentTime) / fadePoint;
-        }
-      });
-
-      await audio.play();
-
-      // Cleanup
-      audio.onended = () => {
-        console.log('Audio playback completed');
-      };
-
+      recognition.start();
+      setIsListening(true);
     } catch (error) {
-      console.error('Speechify API error:', error);
-      // Fallback to browser's speech synthesis
+      console.error('Recognition start error:', error);
+      setIsListening(false);
+      alert('Could not start listening. Please try again.');
+    }
+  }, []);
+
+  // Now define speakResponse after startListening
+  const speakResponse = useCallback(async (text) => {
+    if (!isVoiceMode || !text || typeof text !== 'string') return;
+
+    try {
       if (synthesis) {
-        const utterance = new SpeechSynthesisUtterance(text);
+        synthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance();
+        let voices = synthesis.getVoices();
+        
+        // Force refresh voices if empty
+        if (!voices.length) {
+          await new Promise(resolve => {
+            synthesis.addEventListener('voiceschanged', () => {
+              voices = synthesis.getVoices();
+              resolve();
+            }, { once: true });
+          });
+        }
+
+        // Update the voice preferences in speakResponse
+        const preferredVoices = voiceGender === 'female' ? [
+          { name: 'Microsoft Zira Desktop', lang: 'en-US' },
+          { name: 'Google US English Female', lang: 'en-US' },
+          { name: 'Samantha', lang: 'en-US' },
+          { name: 'Victoria', lang: 'en-US' },
+        ] : [
+          { name: 'Microsoft David Desktop', lang: 'en-US' },
+          { name: 'Google US English Male', lang: 'en-US' },
+          { name: 'Alex', lang: 'en-US' },
+          { name: 'Daniel', lang: 'en-US' },
+        ];
+
+        // Update voice finding logic
+        let selectedVoice = voices.find(voice => 
+          preferredVoices.some(pv => 
+            voice.name === pv.name && voice.lang.startsWith(pv.lang)
+          )
+        );
+
+        // If no exact match, try partial matches
+        if (!selectedVoice) {
+          selectedVoice = voices.find(voice => 
+            voice.lang.startsWith('en') && (
+              voiceGender === 'female' ? (
+                voice.name.toLowerCase().includes('female') ||
+                voice.name.toLowerCase().includes('woman') ||
+                /\b(zira|samantha|victoria|lisa|amy)\b/i.test(voice.name)
+              ) : (
+                voice.name.toLowerCase().includes('male') ||
+                voice.name.toLowerCase().includes('man') ||
+                /\b(david|james|daniel|alex|tom)\b/i.test(voice.name)
+              )
+            )
+          );
+        }
+
+        if (selectedVoice) {
+          console.log(`Selected ${voiceGender} voice:`, selectedVoice.name);
+          utterance.voice = selectedVoice;
+          utterance.pitch = voiceGender === 'female' ? 1.1 : 0.9;
+        }
+
+        // Clean up emojis and special characters while maintaining meaning
+        const processedText = text
+          // Remove emojis but keep their meaning
+          .replace(/(?:[\u2700-\u27bf]|(?:\ud83c[\udde6-\uddff]){2}|[\ud800-\udbff][\udc00-\udfff]|[\u0023-\u0039]\ufe0f?\u20e3|\u3299|\u3297|\u303d|\u3030|\u24c2|\ud83c[\udd70-\udd71]|\ud83c[\udd7e-\udd7f]|\ud83c\udd8e|\ud83c[\udd91-\udd9a]|\ud83c[\udde6-\uddff]|\ud83c[\ude01-\ude02]|\ud83c\ude1a|\ud83c\ude2f|\ud83c[\ude32-\ude3a]|\ud83c[\ude50-\ude51]|\u203c|\u2049|[\u25aa-\u25ab]|\u25b6|\u25c0|[\u25fb-\u25fe]|\u00a9|\u00ae|\u2122|\u2139|\ud83c\udc04|[\u2600-\u26FF]|\u2b05|\u2b06|\u2b07|\u2b1b|\u2b1c|\u2b50|\u2b55|\u231a|\u231b|\u2328|\u23cf|[\u23e9-\u23f3]|[\u23f8-\u23fa]|\ud83c\udccf|\u2934|\u2935|[\u2190-\u21ff])/g, '')
+          // Add natural pauses at punctuation
+          .replace(/([.!?])\s+/g, '$1 ')
+          .replace(/,\s+/g, ', ')
+          // Clean up any remaining special characters
+          .replace(/[^\w\s.,!?-]/g, '')
+          .trim();
+
+        utterance.text = processedText;
+        
+        // Adjust for more natural speech
+        utterance.rate = 0.9;    // Slightly slower for clarity
+        utterance.volume = 1.0;  // Full volume
+
+        // Adjust pitch based on voice gender
+        if (selectedVoice) {
+          utterance.pitch = voiceGender === 'female' ? 1.1 : 0.9;
+        }
+
+        // Add dynamic rate changes for emphasis
+        utterance.onboundary = (event) => {
+          if (event.name === 'word') {
+            const word = event.target.text.slice(
+              event.charIndex,
+              event.charIndex + event.charLength
+            ).toLowerCase();
+
+            // Adjust rate and pitch for emotional words
+            if (/^(great|amazing|wonderful|excellent|fantastic)/.test(word)) {
+              utterance.rate = 0.85;  // Enthusiastic
+              utterance.pitch *= 1.1;
+            } else if (/^(sad|sorry|unfortunately)/.test(word)) {
+              utterance.rate = 0.8;   // Somber
+              utterance.pitch *= 0.9;
+            } else if (/^(careful|warning|caution)/.test(word)) {
+              utterance.rate = 0.75;  // Cautionary
+              utterance.pitch *= 1.05;
+            } else if (/[.!?]$/.test(word)) {
+              utterance.rate = 0.8;   // Sentence endings
+            } else {
+              utterance.rate = 0.9;   // Reset to normal
+              utterance.pitch = voiceGender === 'female' ? 1.1 : 0.9;
+            }
+          }
+        };
+
+        // Add speech end handler
+        utterance.onend = () => {
+          if (isVoiceMode && !isListening && !isReplying) {
+            startListening();
+          }
+        };
+
         synthesis.speak(utterance);
       }
+    } catch (error) {
+      console.error('Speech synthesis error:', error);
     }
-  }, [isVoiceMode]);
+  }, [isVoiceMode, isListening, isReplying, startListening, voiceGender]);
 
-  // Now define handleSend after speakResponse
+  // Define handleSend after both startListening and speakResponse
   const handleSend = useCallback(async (text = inputText) => {
     const messageText = text.trim();
     if (!messageText) return;
@@ -144,6 +230,12 @@ const ChatInterface = () => {
     setInputText('');
 
     try {
+      setIsReplying(true); // Set replying state before speech
+      if (recognition && isListening) {
+        recognition.stop(); // Stop listening while replying
+        setIsListening(false);
+      }
+
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
@@ -174,26 +266,33 @@ const ChatInterface = () => {
         text: "I apologize, but I'm having trouble responding right now. Please try again in a moment.",
         isUser: false
       }]);
+    } finally {
+      setIsReplying(false); // Reset replying state after speech
+      // Don't auto-start listening after response
+      // User needs to click to start listening again
     }
-  }, [inputText, sessionId, isVoiceMode, speakResponse]);
+  }, [inputText, sessionId, isVoiceMode, speakResponse, isListening, startListening]);
 
+  // Define handleVoiceResult after handleSend
   const handleVoiceResult = useCallback((event) => {
-    const current = Array.from(event.results).map(result => result[0].transcript).join('');
-    setTranscript(current);
-    setInputText(current);
-  }, []);
+    if (isReplying) return; // Ignore results while bot is replying
 
-  const startListening = useCallback(() => {
-    if (!recognition) return;
+    const results = Array.from(event.results);
+    const current = results.map(result => result[0].transcript).join('');
+    setTranscript(current);
     
-    try {
-      recognition.start();
-      setIsListening(true);
-    } catch (error) {
-      console.error('Recognition start error:', error);
-      setIsListening(false);
+    // If this is a final result, submit after a short pause
+    if (results[results.length - 1].isFinal) {
+      setInputText(current);
+      // Stop listening and send message
+      if (recognition) {
+        recognition.stop();
+        setIsListening(false);
+      }
+      handleSend(current);
+      setTranscript('');
     }
-  }, []);
+  }, [handleSend, isReplying]);
 
   const stopListening = useCallback(async () => {
     if (!recognition) return;
@@ -208,13 +307,18 @@ const ChatInterface = () => {
       }
     } catch (error) {
       console.error('Recognition stop error:', error);
+      setIsListening(false);
     }
-  }, [transcript, handleSend, recognition]);
+  }, [transcript, handleSend]);
 
   useEffect(() => {
     if (recognition) {
       recognition.onresult = handleVoiceResult;
-      recognition.onend = () => setIsListening(false);
+      recognition.onend = () => {
+        if (!isReplying) { // Only reset listening state if not replying
+          setIsListening(false);
+        }
+      };
     }
     return () => {
       if (recognition) {
@@ -222,7 +326,7 @@ const ChatInterface = () => {
         recognition.onend = null;
       }
     };
-  }, [handleVoiceResult]);
+  }, [handleVoiceResult, isReplying]);
 
   useEffect(() => {
     const loadVoices = () => {
@@ -236,41 +340,27 @@ const ChatInterface = () => {
     }
   }, []);
 
-  useEffect(() => {
-    const verifyApiKey = async () => {
-      try {
-        const response = await fetch('https://texttospeech.speechify.com/api/healthCheck', {
-          headers: {
-            'Authorization': `Token ${SPEECHIFY_API_KEY}`
-          }
-        });
-        
-        if (!response.ok) {
-          console.error('Speechify API key verification failed');
-          setIsVoiceMode(false);
-        }
-      } catch (error) {
-        console.error('Failed to verify Speechify API key:', error);
-        setIsVoiceMode(false);
-      }
-    };
-
-    if (isVoiceMode) {
-      verifyApiKey();
-    }
-  }, []);
-
-  const toggleVoiceMode = () => {
+  // Update toggleVoiceMode to be simpler
+  const toggleVoiceMode = useCallback(() => {
     if (!checkVoiceSupport()) {
       alert('Voice features are not supported in your browser. Please use Chrome or Edge.');
       return;
     }
-    setIsVoiceMode(!isVoiceMode);
-    setIsListening(false);
-    if (synthesis.speaking) {
-      synthesis.cancel();
+
+    if (!isVoiceMode) {
+      setIsVoiceModalOpen(true); // Show voice selection modal when enabling voice mode
+    } else {
+      // Stop everything when switching back to text mode
+      setIsVoiceMode(false);
+      setIsListening(false);
+      if (synthesis.speaking) {
+        synthesis.cancel();
+      }
+      if (recognition && isListening) {
+        recognition.stop();
+      }
     }
-  };
+  }, [isVoiceMode, isListening]);
 
   const toggleListening = () => {
     if (isListening) {
@@ -285,6 +375,59 @@ const ChatInterface = () => {
       handleSend();
     }
   }, [handleSend]);
+
+  // Add voice selection modal component
+  const VoiceSelectionModal = ({ isOpen, onClose, onSelect }) => {
+    return (
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+            onClick={onClose}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-gradient-to-r from-purple-900/90 to-fuchsia-900/90 p-6 rounded-2xl shadow-xl max-w-sm w-full mx-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 className="text-xl font-semibold text-white mb-4">Select Voice Type</h3>
+              <div className="space-y-4">
+                <button
+                  onClick={() => {
+                    onSelect('female');
+                    onClose();
+                  }}
+                  className="w-full p-4 rounded-xl bg-white/10 hover:bg-white/20 transition-all text-white flex items-center gap-3"
+                >
+                  <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                    👩
+                  </div>
+                  Female Voice
+                </button>
+                <button
+                  onClick={() => {
+                    onSelect('male');
+                    onClose();
+                  }}
+                  className="w-full p-4 rounded-xl bg-white/10 hover:bg-white/20 transition-all text-white flex items-center gap-3"
+                >
+                  <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                    👨
+                  </div>
+                  Male Voice
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  };
 
   return (
     <motion.div
@@ -411,7 +554,7 @@ const ChatInterface = () => {
                 ) : (
                   <div className="flex items-center gap-2">
                     <Mic size={24} />
-                    <span className="text-sm">Tap to speak</span>
+                    <span className="text-sm">Click to speak</span>
                   </div>
                 )}
               </motion.button>
@@ -438,6 +581,15 @@ const ChatInterface = () => {
           </div>
         </div>
       </div>
+      <VoiceSelectionModal 
+        isOpen={isVoiceModalOpen}
+        onClose={() => setIsVoiceModalOpen(false)}
+        onSelect={(gender) => {
+          setVoiceGender(gender);
+          setIsVoiceMode(true);
+          setIsVoiceModalOpen(false);
+        }}
+      />
     </motion.div>
   );
 };
