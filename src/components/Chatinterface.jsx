@@ -1,11 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Send, MessageSquare, Bot, Sparkles } from 'lucide-react';
 import useMeasure from 'react-use-measure';
 
-const API_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:3000/api/chat'
-  : 'https://your-deployed-backend-url/api/chat';
+const API_URL = `http://localhost:3000/api/chat`;
+const SPEECHIFY_API_KEY = import.meta.env.VITE_SPEECHIFY_API_KEY;
+const SPEECHIFY_API_URL = import.meta.env.VITE_SPEECHIFY_API_URL;
+
+const speechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const recognition = speechRecognition ? new speechRecognition() : null;
+const synthesis = window.speechSynthesis;
+
+if (recognition) {
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+}
 
 const VoiceWaveform = () => {
   const bars = 5;
@@ -35,60 +45,246 @@ const VoiceWaveform = () => {
   );
 };
 
+const checkVoiceSupport = () => {
+  const speechRecognitionSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  const speechifyConfigured = !!SPEECHIFY_API_KEY;
+  
+  if (!speechRecognitionSupported) {
+    console.warn('Speech recognition not supported');
+    return false;
+  }
+  
+  if (!speechifyConfigured) {
+    console.warn('Speechify API key not configured');
+    return false;
+  }
+  
+  return true;
+};
+
 const ChatInterface = () => {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
-  const [isVoiceMode, setIsVoiceMode] = useState(true);
+  const [isVoiceMode, setIsVoiceMode] = useState(() => checkVoiceSupport());
   const [isListening, setIsListening] = useState(false);
   const [ref, bounds] = useMeasure();
+  const [sessionId] = useState(() => 'session_' + Date.now());
+  const [transcript, setTranscript] = useState('');
 
-  const handleSend = async () => {
-    if (inputText.trim()) {
-      // Add user message immediately
-      const userMessage = { text: inputText, isUser: true };
-      setMessages(prev => [...prev, userMessage]);
-      const currentInput = inputText;
-      setInputText('');
-
-      try {
-        const response = await fetch(API_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
+  // Define speakResponse first since other functions depend on it
+  const speakResponse = useCallback(async (text) => {
+    if (!isVoiceMode || !text?.trim()) return;
+  
+    try {
+      const response = await fetch('https://texttospeech.speechify.com/api/generateAudioFiles', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Token ${SPEECHIFY_API_KEY}`
+        },
+        body: JSON.stringify({
+          text: text,
+          audioFormat: 'mp3',
+          voiceParams: {
+            name: 'kristy', // Specify Kristy voice
+            engine: 'neural',
+            speakingRate: '1.0',
+            pitch: '1.0'
           },
-          body: JSON.stringify({ message: currentInput }),
-          mode: 'cors',
-          credentials: 'include'
-        });
+          quality: 'high',
+          platform: 'web',
+          preserveParagraphs: true,
+          paragraphBreaks: true
+        })
+      });
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        setMessages(prev => [...prev, {
-          text: data.reply || "I apologize, but I couldn't process that properly.",
-          isUser: false
-        }]);
-      } catch (error) {
-        console.error('Error:', error);
-        setMessages(prev => [...prev, {
-          text: "I'm having trouble connecting. Please try again later.",
-          isUser: false
-        }]);
+      if (!response.ok) {
+        throw new Error(`Speechify error: ${response.status}`);
       }
+
+      const data = await response.json();
+      const audioUrl = data.audioUrl;
+      const audio = new Audio(audioUrl);
+
+      // Add natural fade in/out
+      audio.addEventListener('timeupdate', () => {
+        const fadePoint = 0.1;
+        if (audio.currentTime < fadePoint) {
+          audio.volume = audio.currentTime / fadePoint;
+        }
+        if (audio.duration - audio.currentTime < fadePoint) {
+          audio.volume = (audio.duration - audio.currentTime) / fadePoint;
+        }
+      });
+
+      await audio.play();
+
+      // Cleanup
+      audio.onended = () => {
+        console.log('Audio playback completed');
+      };
+
+    } catch (error) {
+      console.error('Speechify API error:', error);
+      // Fallback to browser's speech synthesis
+      if (synthesis) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        synthesis.speak(utterance);
+      }
+    }
+  }, [isVoiceMode]);
+
+  // Now define handleSend after speakResponse
+  const handleSend = useCallback(async (text = inputText) => {
+    const messageText = text.trim();
+    if (!messageText) return;
+
+    const userMessage = { text: messageText, isUser: true };
+    setMessages(prev => [...prev, userMessage]);
+    setInputText('');
+
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ 
+          message: messageText,
+          sessionId: sessionId
+        }),
+      });
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+
+      setMessages(prev => [...prev, {
+        text: data.reply,
+        isUser: false
+      }]);
+
+      if (isVoiceMode) {
+        await speakResponse(data.reply);
+      }
+    } catch (error) {
+      console.error('Chat error:', error);
+      setMessages(prev => [...prev, {
+        text: "I apologize, but I'm having trouble responding right now. Please try again in a moment.",
+        isUser: false
+      }]);
+    }
+  }, [inputText, sessionId, isVoiceMode, speakResponse]);
+
+  const handleVoiceResult = useCallback((event) => {
+    const current = Array.from(event.results).map(result => result[0].transcript).join('');
+    setTranscript(current);
+    setInputText(current);
+  }, []);
+
+  const startListening = useCallback(() => {
+    if (!recognition) return;
+    
+    try {
+      recognition.start();
+      setIsListening(true);
+    } catch (error) {
+      console.error('Recognition start error:', error);
+      setIsListening(false);
+    }
+  }, []);
+
+  const stopListening = useCallback(async () => {
+    if (!recognition) return;
+    
+    try {
+      recognition.stop();
+      setIsListening(false);
+      
+      if (transcript?.trim()) {
+        await handleSend(transcript);
+        setTranscript('');
+      }
+    } catch (error) {
+      console.error('Recognition stop error:', error);
+    }
+  }, [transcript, handleSend, recognition]);
+
+  useEffect(() => {
+    if (recognition) {
+      recognition.onresult = handleVoiceResult;
+      recognition.onend = () => setIsListening(false);
+    }
+    return () => {
+      if (recognition) {
+        recognition.onresult = null;
+        recognition.onend = null;
+      }
+    };
+  }, [handleVoiceResult]);
+
+  useEffect(() => {
+    const loadVoices = () => {
+      const voices = synthesis.getVoices();
+      console.log('Available voices:', voices.map(v => v.name));
+    };
+
+    if (synthesis) {
+      synthesis.addEventListener('voiceschanged', loadVoices);
+      return () => synthesis.removeEventListener('voiceschanged', loadVoices);
+    }
+  }, []);
+
+  useEffect(() => {
+    const verifyApiKey = async () => {
+      try {
+        const response = await fetch('https://texttospeech.speechify.com/api/healthCheck', {
+          headers: {
+            'Authorization': `Token ${SPEECHIFY_API_KEY}`
+          }
+        });
+        
+        if (!response.ok) {
+          console.error('Speechify API key verification failed');
+          setIsVoiceMode(false);
+        }
+      } catch (error) {
+        console.error('Failed to verify Speechify API key:', error);
+        setIsVoiceMode(false);
+      }
+    };
+
+    if (isVoiceMode) {
+      verifyApiKey();
+    }
+  }, []);
+
+  const toggleVoiceMode = () => {
+    if (!checkVoiceSupport()) {
+      alert('Voice features are not supported in your browser. Please use Chrome or Edge.');
+      return;
+    }
+    setIsVoiceMode(!isVoiceMode);
+    setIsListening(false);
+    if (synthesis.speaking) {
+      synthesis.cancel();
     }
   };
 
-  const toggleVoiceMode = () => {
-    setIsVoiceMode(!isVoiceMode);
-    setIsListening(false);
+  const toggleListening = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
   };
 
-  const toggleListening = () => {
-    setIsListening(!isListening);
-  };
+  const handleKeyPress = useCallback((e) => {
+    if (e.key === 'Enter') {
+      handleSend();
+    }
+  }, [handleSend]);
 
   return (
     <motion.div
@@ -205,7 +401,14 @@ const ChatInterface = () => {
                     : 'bg-white/10 hover:bg-white/20'
                 } w-full flex items-center justify-center`}
               >
-                {isListening ? <VoiceWaveform /> : (
+                {isListening ? (
+                  <>
+                    <VoiceWaveform />
+                    <span className="ml-2 text-sm">
+                      {transcript || "Listening..."}
+                    </span>
+                  </>
+                ) : (
                   <div className="flex items-center gap-2">
                     <Mic size={24} />
                     <span className="text-sm">Tap to speak</span>
@@ -220,7 +423,7 @@ const ChatInterface = () => {
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder="Type your message..."
                   className="flex-1 p-4 rounded-2xl bg-white/10 border border-white/20 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all placeholder-white/50 text-white"
-                  onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                  onKeyPress={handleKeyPress}
                 />
                 <motion.button
                   whileHover={{ scale: 1.1, rotate: 5 }}
