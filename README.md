@@ -13,7 +13,6 @@ An empathetic AI chat companion built with **React, Vite, and Google's Gemini LL
 - 🌈 **Beautiful UI with animations**  
 - 🇮🇳 **Bilingual Support** (English & Hindi)  
 - 🎨 **Responsive Design** with Tailwind CSS  
-- 🔒 **Secure API Handling**  
 
 ## 🚀 Quick Start  
 
