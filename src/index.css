@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+
+.night-sky {
+  background: linear-gradient(to bottom, #0f172a 0%, #1e293b 100%);
+  background-attachment: fixed;
+  position: relative;
+  overflow: hidden;
+}
+
+.night-sky::before {
+  content: '';
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  top: -50%;
+  left: -50%;
+  background-image: 
+    radial-gradient(1px 1px at 25px 25px, white 1px, transparent 0),
+    radial-gradient(1px 1px at 50px 50px, white 1px, transparent 0),
+    radial-gradient(1px 1px at 75px 75px, white 1px, transparent 0),
+    radial-gradient(2px 2px at 100px 100px, white 1px, transparent 0);
+  background-size: 100px 100px;
+  animation: rotate 240s linear infinite;
+  opacity: 0.2;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.glass-morphism {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+}
