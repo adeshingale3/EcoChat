@@ -8,8 +8,6 @@ Echo serves as a **companion that listens, understands, and connects on an emoti
 
 ## Snapshots
 <img src="https://github.com/user-attachments/assets/aff12240-c79d-4ba7-bca6-14fa0646453a" width="48%">
-<img src="https://github.com/user-attachments/assets/55e6dc43-6db5-418a-a576-a9849b227033" width="48%">
-
 <img src="https://github.com/user-attachments/assets/17fe2014-7a2b-4c04-bfd8-b7ec6b613dd1" width="48%">
 <img src="https://github.com/user-attachments/assets/6f55f0e1-2d30-4a47-a43c-8a8e6900cdc9" width="48%">
 
